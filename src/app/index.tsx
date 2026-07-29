@@ -3,7 +3,15 @@ import { Text, View, StyleSheet } from "react-native";
 export default function Index() {
   return (
     <View style={styles.container}>
-      <Text style={styles.centerText}>Welcome to Last Glance App!, hehe </Text>
+      <Text style={styles.centerText}>Welcome to, THE Last Glance App!</Text>
+      <Text style={{
+        color: "white",
+        backgroundColor: "red",
+        fontSize: 30,
+        marginTop: 10,
+        borderRadius: 20,
+        padding: 8
+      }}>Siuuuuuu</Text>
     </View>
   );
 }
@@ -16,6 +24,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   centerText: {
-    color: "white"
+    color: "white",
+    fontSize: 25,
+    textAlign: "center"
   }
 });
