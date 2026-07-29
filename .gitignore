@@ -9,6 +9,10 @@ dist/
 web-build/
 expo-env.d.ts
 
+# unwanted:
+.claude/
+.vscode/
+
 # Native
 .kotlin/
 *.orig.*
