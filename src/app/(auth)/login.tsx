@@ -68,9 +68,9 @@ export default function LoginScreen() {
                 if (usernameError) setUsernameError('');
               }}
               placeholder="Enter your username"
-              placeholderTextColor="#64748b"
+              placeholderTextColor="#636363"
               autoCapitalize="none"
-              style={{ backgroundColor: '#121212', borderColor: usernameError ? '#f87171' : '#334155', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: '#fff' }}
+              style={{ backgroundColor: '#1c1c1c', borderColor: usernameError ? '#f87171' : '#636363', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: '#fff' }}
             />
             {usernameError ? <Text style={{ color: '#f87171', marginTop: 6 }}>{usernameError}</Text> : null}
           </View>
@@ -84,9 +84,9 @@ export default function LoginScreen() {
                 if (passwordError) setPasswordError('');
               }}
               placeholder="Enter your password"
-              placeholderTextColor="#64748b"
+              placeholderTextColor="#636363"
               secureTextEntry
-              style={{ backgroundColor: '#121212', borderColor: passwordError ? '#f87171' : '#334155', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: '#fff' }}
+              style={{ backgroundColor: '#1c1c1c', borderColor: passwordError ? '#f87171' : '#636363', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: '#fff' }}
             />
             {passwordError ? <Text style={{ color: '#f87171', marginTop: 6 }}>{passwordError}</Text> : null}
           </View>
