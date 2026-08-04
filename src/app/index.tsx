@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View, FlatList, Modal, TextInput, Alert, StyleSheet } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View, FlatList, Modal, TextInput, Alert, StyleSheet, Image } from 'react-native';
 import { Redirect, router } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
 import apiClient from '@/services/api';
+import * as ImagePicker from 'expo-image-picker';
 
 type Note = {
   id: string;
   title: string;
   content: string;
   createdAt: string;
+  media?: { url: string; type: string }[];
 };
 
 export default function Index() {
@@ -19,6 +21,8 @@ export default function Index() {
   const [isModalVisible, setModalVisible] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     initializeAuth();
@@ -42,24 +46,59 @@ export default function Index() {
     }
   };
 
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+    }
+  };
+
   const handleAddNote = async () => {
-    if (!title && !content) {
-      Alert.alert('Validation Error', 'Please provide a title or content');
+    if (!title && !content && !imageUri) {
+      Alert.alert('Validation Error', 'Please provide a title, content, or an image');
       return;
     }
+
     try {
-      await apiClient.post('/notes', {
-        userId: user?.id,
-        title,
-        content
+      setIsUploading(true);
+      const formData = new FormData();
+      formData.append('userId', user?.id || '');
+      formData.append('title', title);
+      formData.append('content', content);
+
+      if (imageUri) {
+        const filename = imageUri.split('/').pop() || 'image.jpg';
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+        formData.append('media', {
+          uri: imageUri,
+          name: filename,
+          type,
+        } as any);
+      }
+
+      await apiClient.post('/notes', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
+
       setTitle('');
       setContent('');
+      setImageUri(null);
       setModalVisible(false);
       fetchNotes();
     } catch (error) {
       console.error('Failed to create note', error);
       Alert.alert('Error', 'Failed to create note');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -84,6 +123,15 @@ export default function Index() {
     <View style={styles.noteCard}>
       {item.title ? <Text style={styles.noteTitle}>{item.title}</Text> : null}
       {item.content ? <Text style={styles.noteContent}>{item.content}</Text> : null}
+      
+      {item.media && item.media.length > 0 && item.media[0].url && (
+        <Image 
+          source={{ uri: item.media[0].url }} 
+          style={styles.noteImage} 
+          resizeMode="cover"
+        />
+      )}
+
       <Text style={styles.noteDate}>{new Date(item.createdAt).toLocaleString()}</Text>
     </View>
   );
@@ -93,7 +141,6 @@ export default function Index() {
       <View style={styles.header}>
         <View>
           <Text style={styles.welcomeText}>Welcome {user.username} ;)</Text>
-          {/* <Text style={styles.subtitle}>Your Last Glance Gallery</Text> */}
         </View>
         <Pressable
           onPress={() => {
@@ -120,7 +167,6 @@ export default function Index() {
         />
       )}
 
-      {/* Floating Action Button */}
       <Pressable
         style={styles.fab}
         onPress={() => setModalVisible(true)}
@@ -128,7 +174,6 @@ export default function Index() {
         <Text style={styles.fabText}>+</Text>
       </Pressable>
 
-      {/* Add Note Modal */}
       <Modal visible={isModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -151,8 +196,17 @@ export default function Index() {
               onChangeText={setContent}
             />
 
+            {imageUri && (
+              <View style={styles.previewContainer}>
+                <Image source={{ uri: imageUri }} style={styles.previewImage} />
+                <Pressable style={styles.removeImageBtn} onPress={() => setImageUri(null)}>
+                  <Text style={styles.removeImageText}>X</Text>
+                </Pressable>
+              </View>
+            )}
+
             <View style={styles.mediaButtons}>
-              <Pressable style={styles.mediaBtn} onPress={handleUnderDevelopment}>
+              <Pressable style={styles.mediaBtn} onPress={pickImage}>
                 <Text style={styles.mediaBtnText}>📷 Image</Text>
               </Pressable>
               <Pressable style={styles.mediaBtn} onPress={handleUnderDevelopment}>
@@ -161,11 +215,11 @@ export default function Index() {
             </View>
 
             <View style={styles.modalActions}>
-              <Pressable style={[styles.btn, styles.cancelBtn]} onPress={() => setModalVisible(false)}>
+              <Pressable style={[styles.btn, styles.cancelBtn]} onPress={() => { setModalVisible(false); setImageUri(null); setTitle(''); setContent(''); }}>
                 <Text style={styles.btnTextCancel}>Cancel</Text>
               </Pressable>
-              <Pressable style={[styles.btn, styles.saveBtn]} onPress={handleAddNote}>
-                <Text style={styles.btnText}>Save</Text>
+              <Pressable style={[styles.btn, styles.saveBtn]} onPress={handleAddNote} disabled={isUploading}>
+                <Text style={styles.btnText}>{isUploading ? 'Saving...' : 'Save'}</Text>
               </Pressable>
             </View>
           </View>
@@ -202,6 +256,7 @@ const styles = StyleSheet.create({
   },
   noteTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
   noteContent: { color: '#e2e8f0', fontSize: 16, lineHeight: 24 },
+  noteImage: { width: '100%', height: 200, borderRadius: 8, marginTop: 12 },
   noteDate: { color: '#686767', fontSize: 12, marginTop: 12, textAlign: 'right' },
   fab: {
     position: 'absolute',
@@ -241,6 +296,10 @@ const styles = StyleSheet.create({
     fontSize: 16
   },
   textArea: { height: 120, textAlignVertical: 'top' },
+  previewContainer: { position: 'relative', marginBottom: 16 },
+  previewImage: { width: '100%', height: 150, borderRadius: 12 },
+  removeImageBtn: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  removeImageText: { color: 'white', fontWeight: 'bold', fontSize: 12 },
   mediaButtons: { flexDirection: 'row', gap: 12, marginBottom: 24 },
   mediaBtn: {
     flex: 1,
