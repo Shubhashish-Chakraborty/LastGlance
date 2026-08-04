@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     backgroundColor: '#1c1c1c',
   },
-  welcomeText: { color: '#e3cb00', fontSize: 18, fontWeight: 'light' },
+  welcomeText: { color: '#e3cb00', fontSize: 18, fontWeight: 'bold' },
   subtitle: { color: '#94a3b8', fontSize: 14, marginTop: 4 },
   logoutBtn: { backgroundColor: 'red', borderWidth: 1, borderColor: '#334155', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
   logoutText: { color: 'white', fontWeight: 'bold', fontSize: 12 },
