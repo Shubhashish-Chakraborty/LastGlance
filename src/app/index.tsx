@@ -1,115 +1,86 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View, FlatList, Modal, TextInput, Alert, StyleSheet, Image } from 'react-native';
-import { Redirect, router } from 'expo-router';
+import React, { useEffect, useState, useCallback } from 'react';
+import { ActivityIndicator, Pressable, Text, View, FlatList, Modal, TextInput, Alert, StyleSheet, RefreshControl } from 'react-native';
+import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
 import apiClient from '@/services/api';
-import * as ImagePicker from 'expo-image-picker';
 
-type Note = {
+type Subject = {
   id: string;
-  title: string;
-  content: string;
-  createdAt: string;
-  media?: { url: string; type: string }[];
+  name: string;
+  _count?: {
+    notes: number;
+  };
 };
 
 export default function Index() {
   const { user, token, isHydrated, initializeAuth, clearAuth } = useAuthStore();
-  const [notes, setNotes] = useState<Note[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isModalVisible, setModalVisible] = useState(false);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [name, setName] = useState('');
 
   useEffect(() => {
     initializeAuth();
   }, [initializeAuth]);
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchNotes();
-    }
-  }, [user?.id]);
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        fetchSubjects();
+      }
+    }, [user?.id])
+  );
 
-  const fetchNotes = async () => {
+  const fetchSubjects = async () => {
     try {
       setIsLoading(true);
-      const res = await apiClient.get(`/notes/${user?.id}`);
-      setNotes(res.data);
+      const res = await apiClient.get(`/subjects/${user?.id}`);
+      setSubjects(res.data);
     } catch (error) {
-      console.error('Failed to fetch notes', error);
+      console.error('Failed to fetch subjects', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
+  const onRefresh = async () => {
+    if (!user?.id) return;
+    setIsRefreshing(true);
+    try {
+      const res = await apiClient.get(`/subjects/${user?.id}`);
+      setSubjects(res.data);
+    } catch (error) {
+      console.error('Failed to refresh subjects', error);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
-  const handleAddNote = async () => {
-    if (!title && !content && !imageUri) {
-      Alert.alert('Validation Error', 'Please provide a title, content, or an image');
+  const handleAddSubject = async () => {
+    if (!name.trim()) {
+      Alert.alert('Validation Error', 'Please provide a subject name');
       return;
     }
 
     try {
-      setIsUploading(true);
-      const formData = new FormData();
-      formData.append('userId', user?.id || '');
-      formData.append('title', title);
-      formData.append('content', content);
-
-      if (imageUri) {
-        const filename = imageUri.split('/').pop() || 'image.jpg';
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : `image/jpeg`;
-
-        formData.append('media', {
-          uri: imageUri,
-          name: filename,
-          type,
-        } as any);
-      }
-
-      await apiClient.post('/notes', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      await apiClient.post('/subjects', {
+        userId: user?.id,
+        name: name.trim()
       });
-
-      setTitle('');
-      setContent('');
-      setImageUri(null);
+      setName('');
       setModalVisible(false);
-      fetchNotes();
-    } catch (error) {
-      console.error('Failed to create note', error);
-      Alert.alert('Error', 'Failed to create note');
-    } finally {
-      setIsUploading(false);
+      fetchSubjects();
+    } catch (error: any) {
+      console.error('Failed to create subject', error);
+      Alert.alert('Error', error.response?.data?.error || 'Failed to create subject');
     }
-  };
-
-  const handleUnderDevelopment = () => {
-    Alert.alert('Notice', 'This feature is currently under development!');
   };
 
   if (!isHydrated) {
     return (
       <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#60a5fa" />
+        <ActivityIndicator size="large" color="#f9cf26" />
         <Text style={styles.loadingText}>Checking your session...</Text>
       </View>
     );
@@ -119,21 +90,16 @@ export default function Index() {
     return <Redirect href="/login" />;
   }
 
-  const renderNote = ({ item }: { item: Note }) => (
-    <View style={styles.noteCard}>
-      {item.title ? <Text style={styles.noteTitle}>{item.title}</Text> : null}
-      {item.content ? <Text style={styles.noteContent}>{item.content}</Text> : null}
-      
-      {item.media && item.media.length > 0 && item.media[0].url && (
-        <Image 
-          source={{ uri: item.media[0].url }} 
-          style={styles.noteImage} 
-          resizeMode="cover"
-        />
-      )}
-
-      <Text style={styles.noteDate}>{new Date(item.createdAt).toLocaleString()}</Text>
-    </View>
+  const renderSubject = ({ item }: { item: Subject }) => (
+    <Pressable
+      style={styles.subjectCard}
+      onPress={() => router.push(`/subject/${item.id}` as never)}
+    >
+      <Text style={styles.subjectName}>{item.name}</Text>
+      <Text style={styles.noteCount}>
+        {item._count?.notes || 0} {item._count?.notes === 1 ? 'note' : 'notes'}
+      </Text>
+    </Pressable>
   );
 
   return (
@@ -141,6 +107,7 @@ export default function Index() {
       <View style={styles.header}>
         <View>
           <Text style={styles.welcomeText}>Welcome {user.username} ;)</Text>
+          <Text style={styles.subtitle}>Your Subjects</Text>
         </View>
         <Pressable
           onPress={() => {
@@ -153,16 +120,24 @@ export default function Index() {
         </Pressable>
       </View>
 
-      {isLoading ? (
-        <ActivityIndicator size="large" color="#60a5fa" style={{ marginTop: 40 }} />
+      {isLoading && !isRefreshing && subjects.length === 0 ? (
+        <ActivityIndicator size="large" color="#f9cf26" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
-          data={notes}
+          data={subjects}
           keyExtractor={(item) => item.id}
-          renderItem={renderNote}
+          renderItem={renderSubject}
           contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              tintColor="#f9cf26"
+              colors={["#f9cf26"]}
+            />
+          }
           ListEmptyComponent={
-            <Text style={styles.emptyText}>No notes yet. Add something you need for last min revision!</Text>
+            <Text style={styles.emptyText}>No subjects yet. Add one to start organizing!</Text>
           }
         />
       )}
@@ -177,49 +152,22 @@ export default function Index() {
       <Modal visible={isModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalHeader}>Add a Note</Text>
+            <Text style={styles.modalHeader}>Create a Subject</Text>
 
             <TextInput
               style={styles.input}
-              placeholder="Title (optional)"
+              placeholder="e.g. Engineering Physics"
               placeholderTextColor="#9ca3af"
-              value={title}
-              onChangeText={setTitle}
+              value={name}
+              onChangeText={setName}
             />
-
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Dump your text notes here..."
-              placeholderTextColor="#9ca3af"
-              multiline
-              value={content}
-              onChangeText={setContent}
-            />
-
-            {imageUri && (
-              <View style={styles.previewContainer}>
-                <Image source={{ uri: imageUri }} style={styles.previewImage} />
-                <Pressable style={styles.removeImageBtn} onPress={() => setImageUri(null)}>
-                  <Text style={styles.removeImageText}>X</Text>
-                </Pressable>
-              </View>
-            )}
-
-            <View style={styles.mediaButtons}>
-              <Pressable style={styles.mediaBtn} onPress={pickImage}>
-                <Text style={styles.mediaBtnText}>📷 Image</Text>
-              </Pressable>
-              <Pressable style={styles.mediaBtn} onPress={handleUnderDevelopment}>
-                <Text style={styles.mediaBtnText}>🎙️ Audio</Text>
-              </Pressable>
-            </View>
 
             <View style={styles.modalActions}>
-              <Pressable style={[styles.btn, styles.cancelBtn]} onPress={() => { setModalVisible(false); setImageUri(null); setTitle(''); setContent(''); }}>
+              <Pressable style={[styles.btn, styles.cancelBtn]} onPress={() => { setModalVisible(false); setName(''); }}>
                 <Text style={styles.btnTextCancel}>Cancel</Text>
               </Pressable>
-              <Pressable style={[styles.btn, styles.saveBtn]} onPress={handleAddNote} disabled={isUploading}>
-                <Text style={styles.btnText}>{isUploading ? 'Saving...' : 'Save'}</Text>
+              <Pressable style={[styles.btn, styles.saveBtn]} onPress={handleAddSubject}>
+                <Text style={styles.btnText}>Save</Text>
               </Pressable>
             </View>
           </View>
@@ -246,18 +194,19 @@ const styles = StyleSheet.create({
   logoutBtn: { backgroundColor: 'red', borderWidth: 1, borderColor: '#334155', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
   logoutText: { color: 'white', fontWeight: 'bold', fontSize: 12 },
   emptyText: { color: '#94a3b8', textAlign: 'center', marginTop: 40, fontSize: 16 },
-  noteCard: {
+  subjectCard: {
     backgroundColor: '#212020',
-    padding: 16,
+    padding: 20,
     borderRadius: 12,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#636363',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
   },
-  noteTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
-  noteContent: { color: '#e2e8f0', fontSize: 16, lineHeight: 24 },
-  noteImage: { width: '100%', height: 200, borderRadius: 8, marginTop: 12 },
-  noteDate: { color: '#686767', fontSize: 12, marginTop: 12, textAlign: 'right' },
+  subjectName: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  noteCount: { color: '#e3cb00', fontSize: 14, fontWeight: '600' },
   fab: {
     position: 'absolute',
     bottom: 30,
@@ -281,7 +230,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
-    minHeight: 400
+    minHeight: 250
   },
   modalHeader: { color: '#fff', fontSize: 22, fontWeight: 'bold', marginBottom: 20 },
   input: {
@@ -290,27 +239,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    marginBottom: 16,
+    marginBottom: 24,
     borderWidth: 1,
     borderColor: '#334155',
     fontSize: 16
   },
-  textArea: { height: 120, textAlignVertical: 'top' },
-  previewContainer: { position: 'relative', marginBottom: 16 },
-  previewImage: { width: '100%', height: 150, borderRadius: 12 },
-  removeImageBtn: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  removeImageText: { color: 'white', fontWeight: 'bold', fontSize: 12 },
-  mediaButtons: { flexDirection: 'row', gap: 12, marginBottom: 24 },
-  mediaBtn: {
-    flex: 1,
-    backgroundColor: '#121212',
-    borderWidth: 1,
-    borderColor: '#334155',
-    padding: 12,
-    borderRadius: 12,
-    alignItems: 'center'
-  },
-  mediaBtnText: { color: '#e2e8f0', fontWeight: '600' },
   modalActions: { flexDirection: 'row', gap: 12 },
   btn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   cancelBtn: { backgroundColor: '#121212', borderWidth: 1, borderColor: '#334155' },
