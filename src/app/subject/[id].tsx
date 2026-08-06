@@ -92,7 +92,14 @@ export default function SubjectScreen() {
     }
   };
 
-  const pickImage = async () => {
+  // Opens the device gallery to pick an existing image
+  const pickImageFromGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow photo library access to attach an image.');
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -102,6 +109,37 @@ export default function SubjectScreen() {
     if (!result.canceled) {
       setImageUri(result.assets[0].uri);
     }
+  };
+
+  // Opens the device camera to take a new photo
+  const takePhotoWithCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow camera access to take a photo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+    }
+  };
+  
+  const handlePickImage = () => {
+    Alert.alert(
+      'Add Photo',
+      'Choose an option',
+      [
+        { text: 'Take Photo', onPress: takePhotoWithCamera },
+        { text: 'Choose from Gallery', onPress: pickImageFromGallery },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+      { cancelable: true }
+    );
   };
 
   const handleAddNote = async () => {
@@ -190,7 +228,7 @@ export default function SubjectScreen() {
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
             <Text style={{ color: '#fff', fontSize: 24 }}>←</Text>
           </Pressable>
-          <Text style={styles.welcomeText}>{subjects.find((s) => s.id === id)?.name || 'Subject'} | Subject Notes</Text>
+          <Text style={styles.welcomeText}>{subjects.find((s) => s.id === id)?.name || 'Subject'}</Text>
         </View>
       </View>
 
@@ -255,7 +293,7 @@ export default function SubjectScreen() {
             )}
 
             <View style={styles.mediaButtons}>
-              <Pressable style={styles.mediaBtn} onPress={pickImage}>
+              <Pressable style={styles.mediaBtn} onPress={handlePickImage}>
                 <Text style={styles.mediaBtnText}>📷 Image</Text>
               </Pressable>
               <Pressable style={styles.mediaBtn} onPress={handleUnderDevelopment}>
