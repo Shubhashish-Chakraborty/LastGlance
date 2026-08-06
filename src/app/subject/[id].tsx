@@ -5,6 +5,14 @@ import { useAuthStore } from '@/store/authStore';
 import apiClient from '@/services/api';
 import * as ImagePicker from 'expo-image-picker';
 
+type Subject = {
+  id: string;
+  name: string;
+  _count?: {
+    notes: number;
+  };
+};
+
 type Note = {
   id: string;
   title: string;
@@ -16,6 +24,7 @@ type Note = {
 export default function SubjectScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, token, isHydrated, initializeAuth } = useAuthStore();
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -37,6 +46,26 @@ export default function SubjectScreen() {
       }
     }, [user?.id, id])
   );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        fetchSubjects();
+      }
+    }, [user?.id])
+  );
+
+  const fetchSubjects = async () => {
+    try {
+      setIsLoading(true);
+      const res = await apiClient.get(`/subjects/${user?.id}`);
+      setSubjects(res.data);
+    } catch (error) {
+      console.error('Failed to fetch subjects', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchNotes = async () => {
     try {
@@ -141,11 +170,11 @@ export default function SubjectScreen() {
     <View style={styles.noteCard}>
       {item.title ? <Text style={styles.noteTitle}>{item.title}</Text> : null}
       {item.content ? <Text style={styles.noteContent}>{item.content}</Text> : null}
-      
+
       {item.media && item.media.length > 0 && item.media[0].url && (
-        <Image 
-          source={{ uri: item.media[0].url }} 
-          style={styles.noteImage} 
+        <Image
+          source={{ uri: item.media[0].url }}
+          style={styles.noteImage}
           resizeMode="cover"
         />
       )}
@@ -161,7 +190,7 @@ export default function SubjectScreen() {
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
             <Text style={{ color: '#fff', fontSize: 24 }}>←</Text>
           </Pressable>
-          <Text style={styles.welcomeText}>Subject Notes</Text>
+          <Text style={styles.welcomeText}>{subjects.find((s) => s.id === id)?.name || 'Subject'} | Subject Notes</Text>
         </View>
       </View>
 
@@ -262,8 +291,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#1c1c1c',
   },
   backBtn: { padding: 4 },
-  welcomeText: { color: '#e3cb00', fontSize: 18, fontWeight: 'bold' },
-  emptyText: { color: '#94a3b8', textAlign: 'center', marginTop: 40, fontSize: 16 },
+  welcomeText: { color: '#ffeacf', fontSize: 18, fontWeight: 'bold' },
+  emptyText: { color: 'white', textAlign: 'center', marginTop: 40, fontSize: 16 },
   noteCard: {
     backgroundColor: '#212020',
     padding: 16,

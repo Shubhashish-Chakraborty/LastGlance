@@ -7,7 +7,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   TextInput,
+  Image
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
+
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -61,11 +69,26 @@ export default function RegisterScreen() {
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
         <View style={{ gap: 10 }}>
-          <Text style={{ fontSize: 28, fontWeight: '700', color: '#fff' }}>Create account</Text>
-          <Text style={{ fontSize: 14, color: '#94a3b8' }}>Sign up to get started</Text>
+          <Animated.View style={{
+            alignItems: 'center',
+            paddingTop: 20,
+          }}>
+            <Image
+              source={require('../../../assets/images/icon.png')}
+              style={{
+                width: 200,
+                height: 200,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              resizeMode="contain"
+            />
+          </Animated.View>
+          <Text style={{ fontSize: 24, fontWeight: '700', color: '#fff', textAlign:'center' }}>Create Account</Text>
+          <Text style={{ fontSize: 14, color: 'gray', textAlign:'center' }}>Sign up to get started</Text>
 
           <View style={{ marginTop: 18 }}>
-            <Text style={{ color: '#e2e8f0', marginBottom: 6 }}>Username</Text>
+            {/* <Text style={{ color: '#e2e8f0', marginBottom: 6 }}>Username</Text> */}
             <TextInput
               value={username}
               onChangeText={(value) => {
@@ -81,7 +104,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={{ marginTop: 12 }}>
-            <Text style={{ color: '#e2e8f0', marginBottom: 6 }}>Password</Text>
+            {/* <Text style={{ color: '#e2e8f0', marginBottom: 6 }}>Password</Text> */}
             <TextInput
               value={password}
               onChangeText={(value) => {
@@ -108,7 +131,7 @@ export default function RegisterScreen() {
           </Pressable>
 
           <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 16 }}>
-            <Text style={{ color: '#94a3b8' }}>Already have an account?</Text>
+            <Text style={{ color: 'gray' }}>Already have an account?</Text>
             <Pressable onPress={() => router.push('/login' as never)}>
               <Text style={{ color: '#60a5fa', marginLeft: 6, fontWeight: '600' }}>Log in</Text>
             </Pressable>
