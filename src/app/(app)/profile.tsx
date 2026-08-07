@@ -172,7 +172,7 @@ export default function ProfileScreen() {
           <View style={styles.sectionCard}>
             {renderSettingItem({
               icon: UserIcon,
-              label: 'Change Username (bug)',
+              label: 'Change Username',
               onPress: () => {
                 setNewUsername(user?.username || '');
                 setModalVisible(true);

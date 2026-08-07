@@ -36,7 +36,7 @@ export const signupUser = async (
 };
 
 export const changeUsername = async (username: string): Promise<{ success: boolean; user: User }> => {
-  const response = await apiClient.patch('/auth/user/change-username', { username });
+  const response = await apiClient.put('/auth/user/change-username', { username });
   return response.data;
 };
 
