@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { ActivityIndicator, Pressable, Text, View, FlatList, Modal, TextInput, Alert, StyleSheet, RefreshControl, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { ActivityIndicator, GestureResponderEvent, Pressable, Text, View, FlatList, Modal, TextInput, Alert, StyleSheet, RefreshControl, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Redirect, router, useFocusEffect } from 'expo-router';
+import { MoreVertical, Trash2 } from 'lucide-react-native';
 import { useAuthStore } from '@/store/authStore';
 import apiClient from '@/services/api';
 
@@ -18,7 +19,10 @@ export default function Index() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isModalVisible, setModalVisible] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [name, setName] = useState('');
+  const [activeMenuSubjectId, setActiveMenuSubjectId] = useState<string | null>(null);
+  const [deletingSubjectId, setDeletingSubjectId] = useState<string | null>(null);
 
   useEffect(() => {
     initializeAuth();
@@ -58,12 +62,14 @@ export default function Index() {
   };
 
   const handleAddSubject = async () => {
+    if (isUploading) return;
     if (!name.trim()) {
       Alert.alert('Validation Error', 'Please provide a subject name');
       return;
     }
 
     try {
+      setIsUploading(true);
       await apiClient.post('/subjects', {
         userId: user?.id,
         name: name.trim()
@@ -74,6 +80,8 @@ export default function Index() {
     } catch (error: any) {
       console.error('Failed to create subject', error);
       Alert.alert('Error', error.response?.data?.error || 'Failed to create subject');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -90,15 +98,76 @@ export default function Index() {
     return <Redirect href="/login" />;
   }
 
+  const toggleSubjectMenu = (event: GestureResponderEvent, subjectId: string) => {
+    event.stopPropagation();
+    setActiveMenuSubjectId((current) => (current === subjectId ? null : subjectId));
+  };
+
+  const handleDeleteSubject = (subjectId: string) => {
+    if (deletingSubjectId === subjectId) return;
+
+    Alert.alert(
+      'Delete Subject',
+      'Are you sure you want to delete this Subject? This will delete everything permanently.',
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => setActiveMenuSubjectId(null) },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingSubjectId(subjectId);
+            try {
+              await apiClient.delete(`/subjects/${subjectId}`);
+              setSubjects((prev) => prev.filter((subject) => subject.id !== subjectId));
+              setActiveMenuSubjectId(null);
+            } catch (error) {
+              console.error('Failed to delete subject', error);
+              Alert.alert('Error', 'Failed to delete subject');
+            } finally {
+              setDeletingSubjectId(null);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   const renderSubject = ({ item }: { item: Subject }) => (
     <Pressable
       style={styles.subjectCard}
       onPress={() => router.push(`/subject/${item.id}` as never)}
     >
-      <Text style={styles.subjectName}>{item.name}</Text>
-      <Text style={styles.noteCount}>
-        {item._count?.notes || 0} {item._count?.notes === 1 ? 'note' : 'notes'}
-      </Text>
+      <View style={styles.subjectHeader}>
+        <View>
+          <Text style={styles.subjectName}>{item.name}</Text>
+          <Text style={styles.noteCount}>
+            {item._count?.notes || 0} {item._count?.notes === 1 ? 'note' : 'notes'}
+          </Text>
+        </View>
+
+        <Pressable
+          style={styles.cardMenuButton}
+          onPress={(event) => toggleSubjectMenu(event, item.id)}
+        >
+          <MoreVertical size={20} color="#fff" />
+        </Pressable>
+      </View>
+
+      {activeMenuSubjectId === item.id && (
+        <View style={styles.cardMenu}>
+          <Pressable
+            style={[styles.cardMenuItem, deletingSubjectId === item.id && styles.disabledBtn]}
+            onPress={() => handleDeleteSubject(item.id)}
+            disabled={deletingSubjectId === item.id}
+          >
+            <Trash2 size={16} color="#ef4444" />
+            <Text style={styles.cardMenuItemText}>
+              {deletingSubjectId === item.id ? 'Deleting...' : 'Delete Subject & Notes'}
+            </Text>
+          </Pressable>
+        </View>
+      )}
     </Pressable>
   );
 
@@ -172,8 +241,12 @@ export default function Index() {
                 <Pressable style={[styles.btn, styles.cancelBtn]} onPress={() => { setModalVisible(false); setName(''); }}>
                   <Text style={styles.btnTextCancel}>Cancel</Text>
                 </Pressable>
-                <Pressable style={[styles.btn, styles.saveBtn]} onPress={handleAddSubject}>
-                  <Text style={styles.btnText}>Save</Text>
+                <Pressable
+                  style={[styles.btn, styles.saveBtn, isUploading && styles.disabledBtn]}
+                  onPress={handleAddSubject}
+                  disabled={isUploading}
+                >
+                  <Text style={styles.btnText}>{isUploading ? 'Saving...' : 'Save'}</Text>
                 </Pressable>
               </View>
             </View>
@@ -206,9 +279,37 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#636363',
+  },
+  subjectHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: 'center',
+    gap: 12,
+  },
+  cardMenuButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  cardMenu: {
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+    paddingTop: 12,
+  },
+  cardMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+  },
+  cardMenuItemText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
   subjectName: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   noteCount: { color: '#e3cb00', fontSize: 14, fontWeight: '600' },
@@ -260,6 +361,7 @@ const styles = StyleSheet.create({
   btn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   cancelBtn: { backgroundColor: '#121212', borderWidth: 1, borderColor: '#334155' },
   saveBtn: { backgroundColor: '#e3cb00' },
+  disabledBtn: { opacity: 0.65 },
   btnText: { color: 'black', fontWeight: '600', fontSize: 16 },
   btnTextCancel: { color: '#fff', fontWeight: '600', fontSize: 16 }
 });

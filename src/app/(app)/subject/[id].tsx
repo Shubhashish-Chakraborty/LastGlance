@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, Text, View, FlatList, Modal, TextInput, A
 import { Redirect, router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { Trash2 } from "lucide-react-native";
 import { useAuthStore } from '@/store/authStore';
 import apiClient from '@/services/api';
 import * as ImagePicker from 'expo-image-picker';
@@ -113,6 +114,7 @@ export default function SubjectScreen() {
   const [content, setContent] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
   const requestIdRef = useRef(0);
 
   useEffect(() => {
@@ -240,6 +242,7 @@ export default function SubjectScreen() {
   };
 
   const handleAddNote = async () => {
+    if (isUploading) return;
     if (!title && !content && !imageUri) {
       Alert.alert('Validation Error', 'Please provide a title, content, or an image');
       return;
@@ -288,6 +291,35 @@ export default function SubjectScreen() {
     Alert.alert('Notice', 'This feature is currently under development!');
   };
 
+  const handleDeleteNote = (noteId: string) => {
+    if (deletingNoteId === noteId) return;
+
+    Alert.alert(
+      'Delete Note',
+      'Are you sure you want to delete this note? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingNoteId(noteId);
+            try {
+              await apiClient.delete(`/notes/${noteId}`);
+              setNotes((prev) => prev.filter((n) => n.id !== noteId));
+            } catch (error) {
+              console.error('Failed to delete note', error);
+              Alert.alert('Error', 'Failed to delete note');
+            } finally {
+              setDeletingNoteId(null);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   if (!isHydrated) {
     return (
       <View style={[styles.container, styles.center]}>
@@ -303,7 +335,17 @@ export default function SubjectScreen() {
 
   const renderNote = ({ item }: { item: Note }) => (
     <View style={styles.noteCard}>
-      {item.title ? <Text style={styles.noteTitle}>{item.title}</Text> : null}
+      <View style={styles.noteHeader}>
+        {item.title ? <Text style={styles.noteTitle}>{item.title}</Text> : <View />}
+        <Pressable
+          style={[styles.deleteBtn, deletingNoteId === item.id && styles.disabledBtn]}
+          onPress={() => handleDeleteNote(item.id)}
+          disabled={deletingNoteId === item.id}
+        >
+          <Trash2 size={24} color="#ef4444" />
+        </Pressable>
+      </View>
+
       {item.content ? <Text style={styles.noteContent}>{item.content}</Text> : null}
 
       {item.media && item.media.length > 0 && item.media[0].url && (
@@ -415,7 +457,11 @@ export default function SubjectScreen() {
                 <Pressable style={[styles.btn, styles.cancelBtn]} onPress={() => { setModalVisible(false); setImageUri(null); setTitle(''); setContent(''); }}>
                   <Text style={styles.btnTextCancel}>Cancel</Text>
                 </Pressable>
-                <Pressable style={[styles.btn, styles.saveBtn]} onPress={handleAddNote} disabled={isUploading}>
+                <Pressable
+                  style={[styles.btn, styles.saveBtn, isUploading && styles.disabledBtn]}
+                  onPress={handleAddNote}
+                  disabled={isUploading}
+                >
                   <Text style={styles.btnText}>{isUploading ? 'Saving...' : 'Save'}</Text>
                 </Pressable>
               </View>
@@ -465,7 +511,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#636363',
   },
-  noteTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
+  noteTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   noteContent: { color: '#e2e8f0', fontSize: 16, lineHeight: 24 },
   noteImage: { width: '100%', height: 200, borderRadius: 8, marginTop: 12 },
   noteDate: { color: '#686767', fontSize: 12, marginTop: 12, textAlign: 'right' },
@@ -565,4 +611,22 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   previewImageWrapper: { width: '100%', height: '100%' },
+
+  noteHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  deleteBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    // backgroundColor: 'rgba(239,68,68,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  disabledBtn: { opacity: 0.65 },
+  deleteBtnText: { fontSize: 13 },
 });
