@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { ActivityIndicator, Pressable, Text, View, FlatList, Modal, TextInput, Alert, StyleSheet, Image, RefreshControl } from 'react-native';
 import { Redirect, router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
@@ -34,18 +34,23 @@ export default function SubjectScreen() {
   const [content, setContent] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     initializeAuth();
   }, [initializeAuth]);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (user?.id && id) {
-        fetchNotes();
-      }
-    }, [user?.id, id])
-  );
+  useEffect(() => {
+    if (!user?.id || !id) {
+      setNotes([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setNotes([]);
+    setIsLoading(true);
+    fetchNotes();
+  }, [id, user?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -68,27 +73,40 @@ export default function SubjectScreen() {
   };
 
   const fetchNotes = async () => {
+    if (!user?.id || !id) return;
+
+    const currentRequestId = ++requestIdRef.current;
+
     try {
       setIsLoading(true);
       const res = await apiClient.get(`/notes/subject/${id}`);
-      setNotes(res.data);
+      if (currentRequestId === requestIdRef.current) {
+        setNotes(res.data);
+      }
     } catch (error) {
       console.error('Failed to fetch notes', error);
     } finally {
-      setIsLoading(false);
+      if (currentRequestId === requestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   const onRefresh = async () => {
     if (!user?.id || !id) return;
     setIsRefreshing(true);
+    const currentRequestId = ++requestIdRef.current;
     try {
       const res = await apiClient.get(`/notes/subject/${id}`);
-      setNotes(res.data);
+      if (currentRequestId === requestIdRef.current) {
+        setNotes(res.data);
+      }
     } catch (error) {
       console.error('Failed to refresh notes', error);
     } finally {
-      setIsRefreshing(false);
+      if (currentRequestId === requestIdRef.current) {
+        setIsRefreshing(false);
+      }
     }
   };
 
@@ -233,7 +251,10 @@ export default function SubjectScreen() {
       </View>
 
       {isLoading && !isRefreshing && notes.length === 0 ? (
-        <ActivityIndicator size="large" color="#60a5fa" style={{ marginTop: 40 }} />
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color="#f9cf26" />
+          <Text style={styles.loadingIndicatorText}>Loading notes...</Text>
+        </View>
       ) : (
         <FlatList
           data={notes}
@@ -331,6 +352,8 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   welcomeText: { color: '#ffeacf', fontSize: 18, fontWeight: 'bold' },
   emptyText: { color: 'white', textAlign: 'center', marginTop: 40, fontSize: 16 },
+  loadingState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
+  loadingIndicatorText: { color: '#f9cf26', marginTop: 12, fontSize: 15, fontWeight: '600' },
   noteCard: {
     backgroundColor: '#212020',
     padding: 16,
