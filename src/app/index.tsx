@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontSize: 14,
-    color: 'white',
+    color: '#ffeacf',
     letterSpacing: 0.3,
   },
   loadingBarContainer: {

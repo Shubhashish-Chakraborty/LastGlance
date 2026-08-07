@@ -109,15 +109,13 @@ export default function Index() {
           <Text style={styles.welcomeText}>Wassup {user.username} ;)</Text>
           <Text style={styles.subtitle}>Your Subjects</Text>
         </View>
-        <Pressable
-          onPress={() => {
-            clearAuth();
-            router.replace('/login');
-          }}
-          style={styles.logoutBtn}
-        >
-          <Text style={styles.logoutText}>Log out</Text>
-        </Pressable>
+        {/* <Pressable style={{
+
+        }}>
+          <Text style={{
+            color: 'white',
+          }}>?</Text>
+        </Pressable> */}
       </View>
 
       {isLoading && !isRefreshing && subjects.length === 0 ? (
@@ -191,8 +189,6 @@ const styles = StyleSheet.create({
   },
   welcomeText: { color: '#ffeacf', fontSize: 18, fontWeight: 'bold' },
   subtitle: { color: 'gray', fontSize: 14, marginTop: 4 },
-  logoutBtn: { backgroundColor: 'red', borderWidth: 1, borderColor: '#334155', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
-  logoutText: { color: 'white', fontWeight: 'bold', fontSize: 12 },
   emptyText: { color: 'white', textAlign: 'center', marginTop: 40, fontSize: 16 },
   subjectCard: {
     backgroundColor: '#212020',
