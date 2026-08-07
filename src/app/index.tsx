@@ -9,6 +9,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useAuthStore } from '@/store/authStore';
+import { waitForServerWakeup } from '@/services/wakeupService';
 
 export default function Index() {
   const opacity = useSharedValue(0);
@@ -48,25 +49,20 @@ export default function Index() {
   useEffect(() => {
     let isMounted = true;
 
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
     const bootstrap = async () => {
-      if (user && token) {
-        await new Promise((resolve) => setTimeout(resolve, 2200));
-        if (!isMounted) return;
-        router.replace('/home');
-        return;
-      }
-
       await initializeAuth();
-
       if (!isMounted) return;
 
       const authState = useAuthStore.getState();
-      await new Promise((resolve) => setTimeout(resolve, 2200));
-      if (!isMounted) return;
-
       if (authState.user && authState.token) {
+        await Promise.all([delay(2200), waitForServerWakeup()]);
+        if (!isMounted) return;
         router.replace('/home');
       } else {
+        await delay(2200);
+        if (!isMounted) return;
         router.replace('/login');
       }
     };
@@ -76,7 +72,7 @@ export default function Index() {
     return () => {
       isMounted = false;
     };
-  }, [initializeAuth, token, user]);
+  }, [initializeAuth]);
 
   useEffect(() => {
     if (isHydrated) {

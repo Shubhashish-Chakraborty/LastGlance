@@ -39,4 +39,6 @@ apiClient.interceptors.response.use(
   },
 );
 
+export const wakeupServer = () => apiClient.post('/wakeup');
+
 export default apiClient;

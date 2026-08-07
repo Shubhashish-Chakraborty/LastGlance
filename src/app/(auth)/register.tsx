@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import Animated, {
 
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
+import { waitForServerWakeup } from '@/services/wakeupService';
 
 export default function RegisterScreen() {
   const [username, setUsername] = useState('');
@@ -25,6 +26,10 @@ export default function RegisterScreen() {
   const [usernameError, setUsernameError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [isServerReady, setIsServerReady] = useState(false);
+  const [isWakingUp, setIsWakingUp] = useState(true);
+  const [serverStatus, setServerStatus] = useState('Connecting to server...');
+  const [connectionError, setConnectionError] = useState('');
 
   const { signup, loading, error } = useAuth();
 
@@ -53,14 +58,62 @@ export default function RegisterScreen() {
     return valid;
   }, [password, username]);
 
+  const ensureServerAwake = useCallback(async () => {
+    if (isServerReady) return true;
+    setConnectionError('');
+    setIsWakingUp(true);
+
+    const ready = await waitForServerWakeup((message) => {
+      setServerStatus(message);
+    });
+
+    setIsServerReady(ready);
+    setIsWakingUp(false);
+
+    if (!ready) {
+      setConnectionError('Unable to connect to server after 1 minute. Please try again.');
+    }
+
+    return ready;
+  }, [isServerReady]);
+
+
   const handleSignup = useCallback(async () => {
     if (!validate()) return;
+
+    const ready = await ensureServerAwake();
+    if (!ready) return;
+
     const result = await signup(username.trim(), password);
     if (result.success) {
       setSuccessMsg(result.message || 'Account created!');
       setTimeout(() => router.replace({ pathname: '/login' }), 1200);
     }
-  }, [password, signup, username, validate]);
+  }, [ensureServerAwake, password, signup, username, validate]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const wake = async () => {
+      const ready = await waitForServerWakeup((message) => {
+        if (isMounted) setServerStatus(message);
+      });
+
+      if (!isMounted) return;
+      setIsServerReady(ready);
+      setIsWakingUp(false);
+      if (!ready) {
+        setConnectionError('Unable to connect to server after 1 minute. Please try again.');
+      }
+    };
+
+    wake();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
 
   return (
     <KeyboardAvoidingView
@@ -120,14 +173,25 @@ export default function RegisterScreen() {
           </View>
 
           {error ? <Text style={{ color: '#f87171', marginTop: 8 }}>{error}</Text> : null}
+          {connectionError ? <Text style={{ color: '#f87171', marginTop: 8 }}>{connectionError}</Text> : null}
+          {isWakingUp ? <Text style={{ color: 'gray', marginTop: 8 }}>{serverStatus}</Text> : null}
           {successMsg ? <Text style={{ color: '#4ade80', marginTop: 8 }}>{successMsg}</Text> : null}
 
           <Pressable
             onPress={handleSignup}
-            disabled={loading}
-            style={{ marginTop: 18, backgroundColor: '#f9cf26', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}
+            disabled={loading || isWakingUp}
+            style={{
+              marginTop: 18,
+              backgroundColor: '#f9cf26',
+              paddingVertical: 14,
+              borderRadius: 12,
+              alignItems: 'center',
+              opacity: loading || isWakingUp ? 0.7 : 1,
+            }}
           >
-            <Text style={{ color: 'black', fontWeight: '600' }}>{loading ? 'Creating account...' : 'Sign Up'}</Text>
+            <Text style={{ color: 'black', fontWeight: '600' }}>
+              {isWakingUp ? 'Connecting to server...' : loading ? 'Creating account...' : 'Sign Up'}
+            </Text>
           </Pressable>
 
           <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 16 }}>
