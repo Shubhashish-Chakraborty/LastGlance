@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { ActivityIndicator, Pressable, Text, View, FlatList, Modal, TextInput, Alert, StyleSheet, Image, RefreshControl } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View, FlatList, Modal, TextInput, Alert, StyleSheet, Image, RefreshControl, ScrollView } from 'react-native';
 import { Redirect, router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useAuthStore } from '@/store/authStore';
 import apiClient from '@/services/api';
 import * as ImagePicker from 'expo-image-picker';
@@ -21,6 +23,82 @@ type Note = {
   media?: { url: string; type: string }[];
 };
 
+function ZoomableImage({ uri }: { uri: string }) {
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
+
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((e) => {
+      scale.value = Math.max(1, Math.min(savedScale.value * e.scale, 5));
+    })
+    .onEnd(() => {
+      savedScale.value = scale.value;
+      if (scale.value <= 1) {
+        scale.value = withSpring(1);
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+        savedScale.value = 1;
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      }
+    });
+
+  const panGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      if (scale.value > 1) {
+        translateX.value = savedTranslateX.value + e.translationX;
+        translateY.value = savedTranslateY.value + e.translationY;
+      }
+    })
+    .onEnd(() => {
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+    });
+
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      if (scale.value > 1) {
+        scale.value = withSpring(1);
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+        savedScale.value = 1;
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      } else {
+        scale.value = withSpring(2.5);
+        savedScale.value = 2.5;
+      }
+    });
+
+  const composedGesture = Gesture.Race(
+    doubleTapGesture,
+    Gesture.Simultaneous(pinchGesture, panGesture)
+  );
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  return (
+    <GestureDetector gesture={composedGesture}>
+      <Animated.Image
+        source={{ uri }}
+        style={[{ width: '100%', height: '100%' }, animatedStyle]}
+        resizeMode="contain"
+      />
+    </GestureDetector>
+  );
+}
+
 export default function SubjectScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, token, isHydrated, initializeAuth } = useAuthStore();
@@ -28,6 +106,7 @@ export default function SubjectScreen() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
 
   const [isModalVisible, setModalVisible] = useState(false);
   const [title, setTitle] = useState('');
@@ -146,7 +225,7 @@ export default function SubjectScreen() {
       setImageUri(result.assets[0].uri);
     }
   };
-  
+
   const handlePickImage = () => {
     Alert.alert(
       'Add Photo',
@@ -228,11 +307,13 @@ export default function SubjectScreen() {
       {item.content ? <Text style={styles.noteContent}>{item.content}</Text> : null}
 
       {item.media && item.media.length > 0 && item.media[0].url && (
-        <Image
-          source={{ uri: item.media[0].url }}
-          style={styles.noteImage}
-          resizeMode="cover"
-        />
+        <Pressable onPress={() => setPreviewUri(item.media![0].url)}>
+          <Image
+            source={{ uri: item.media[0].url }}
+            style={styles.noteImage}
+            resizeMode="cover"
+          />
+        </Pressable>
       )}
 
       <Text style={styles.noteDate}>{new Date(item.createdAt).toLocaleString()}</Text>
@@ -333,6 +414,19 @@ export default function SubjectScreen() {
           </View>
         </View>
       </Modal>
+      <Modal visible={!!previewUri} animationType="fade" transparent={true}>
+        <View style={styles.previewOverlay}>
+          <Pressable style={styles.previewCloseBtn} onPress={() => setPreviewUri(null)}>
+            <Text style={styles.previewCloseText}>✕</Text>
+          </Pressable>
+
+          {previewUri && (
+            <View style={styles.previewImageWrapper}>
+              <ZoomableImage key={previewUri} uri={previewUri} />
+            </View>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -424,5 +518,35 @@ const styles = StyleSheet.create({
   cancelBtn: { backgroundColor: '#121212', borderWidth: 1, borderColor: '#334155' },
   saveBtn: { backgroundColor: '#e3cb00' },
   btnText: { color: 'black', fontWeight: '600', fontSize: 16 },
-  btnTextCancel: { color: '#fff', fontWeight: '600', fontSize: 16 }
+  btnTextCancel: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewCloseBtn: {
+    position: 'absolute',
+    top: 60,
+    right: 24,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewCloseText: { color: '#fff', fontSize: 20, fontWeight: '600' },
+  previewScroll: { width: '100%', height: '100%' },
+  previewScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewImageFull: {
+    width: '100%',
+    height: '100%',
+  },
+  previewImageWrapper: { width: '100%', height: '100%' },
 });
