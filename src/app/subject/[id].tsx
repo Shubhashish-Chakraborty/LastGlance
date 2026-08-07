@@ -249,7 +249,7 @@ export default function SubjectScreen() {
             />
           }
           ListEmptyComponent={
-            <Text style={styles.emptyText}>No notes yet. Add something you need for last min revision!</Text>
+            <Text style={styles.emptyText}>No notes yet in {subjects.find((s) => s.id === id)?.name || 'Subject'}. Add something you need for last min revision!</Text>
           }
         />
       )}

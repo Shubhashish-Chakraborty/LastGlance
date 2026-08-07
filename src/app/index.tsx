@@ -106,7 +106,7 @@ export default function Index() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.welcomeText}>Holaa {user.username} ;)</Text>
+          <Text style={styles.welcomeText}>Wassup {user.username} ;)</Text>
           <Text style={styles.subtitle}>Your Subjects</Text>
         </View>
         <Pressable
