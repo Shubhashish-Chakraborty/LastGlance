@@ -17,7 +17,7 @@ import {
 import { Check, Lock, MessageSquare, User as UserIcon } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
-import { updateProfile, changePassword } from '@/services/authService';
+import { changeUsername, changePassword } from '@/services/authService';
 
 const Colors = {
   background: '#1c1c1c',
@@ -82,7 +82,7 @@ export default function ProfileScreen() {
 
     setSaving(true);
     try {
-      const res = await updateProfile(newUsername.trim());
+      const res = await changeUsername(newUsername.trim());
       const nextUser = res?.user ?? user;
       if (res?.success && token && nextUser) {
         setAuth(nextUser, token);
@@ -172,7 +172,7 @@ export default function ProfileScreen() {
           <View style={styles.sectionCard}>
             {renderSettingItem({
               icon: UserIcon,
-              label: 'Change Username',
+              label: 'Change Username (bug)',
               onPress: () => {
                 setNewUsername(user?.username || '');
                 setModalVisible(true);

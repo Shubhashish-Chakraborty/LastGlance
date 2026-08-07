@@ -35,12 +35,12 @@ export const signupUser = async (
   return response.data;
 };
 
-export const updateProfile = async (username: string): Promise<{ success: boolean; user: User }> => {
-  const response = await apiClient.patch('/api/auth/user/profile', { username });
+export const changeUsername = async (username: string): Promise<{ success: boolean; user: User }> => {
+  const response = await apiClient.patch('/auth/user/change-username', { username });
   return response.data;
 };
 
 export const changePassword = async (currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
-  const response = await apiClient.put('/api/auth/user/change-password', { currentPassword, newPassword });
+  const response = await apiClient.put('/auth/user/change-password', { currentPassword, newPassword });
   return response.data;
 };
