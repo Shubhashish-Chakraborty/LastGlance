@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { ActivityIndicator, Pressable, Text, View, FlatList, Modal, TextInput, Alert, StyleSheet, Image, RefreshControl, ScrollView } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View, FlatList, Modal, TextInput, Alert, StyleSheet, Image, RefreshControl, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Redirect, router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -363,56 +363,65 @@ export default function SubjectScreen() {
         <Text style={styles.fabText}>+</Text>
       </Pressable>
 
-      <Modal visible={isModalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalHeader}>Add a Note</Text>
+      <Modal visible={isModalVisible} animationType="fade" transparent={true}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <ScrollView
+            contentContainerStyle={styles.modalScrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.modalContent}>
+              <Text style={styles.modalHeader}>Add a Note</Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Title (optional)"
-              placeholderTextColor="#9ca3af"
-              value={title}
-              onChangeText={setTitle}
-            />
+              <TextInput
+                style={styles.input}
+                placeholder="Title (optional)"
+                placeholderTextColor="#9ca3af"
+                value={title}
+                onChangeText={setTitle}
+                autoFocus
+              />
 
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Dump your text notes here..."
-              placeholderTextColor="#9ca3af"
-              multiline
-              value={content}
-              onChangeText={setContent}
-            />
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Dump your text notes here..."
+                placeholderTextColor="#9ca3af"
+                multiline
+                value={content}
+                onChangeText={setContent}
+              />
 
-            {imageUri && (
-              <View style={styles.previewContainer}>
-                <Image source={{ uri: imageUri }} style={styles.previewImage} />
-                <Pressable style={styles.removeImageBtn} onPress={() => setImageUri(null)}>
-                  <Text style={styles.removeImageText}>X</Text>
+              {imageUri && (
+                <View style={styles.previewContainer}>
+                  <Image source={{ uri: imageUri }} style={styles.previewImage} />
+                  <Pressable style={styles.removeImageBtn} onPress={() => setImageUri(null)}>
+                    <Text style={styles.removeImageText}>X</Text>
+                  </Pressable>
+                </View>
+              )}
+
+              <View style={styles.mediaButtons}>
+                <Pressable style={styles.mediaBtn} onPress={handlePickImage}>
+                  <Text style={styles.mediaBtnText}>📷 Image</Text>
+                </Pressable>
+                <Pressable style={styles.mediaBtn} onPress={handleUnderDevelopment}>
+                  <Text style={styles.mediaBtnText}>🎙️ Audio</Text>
                 </Pressable>
               </View>
-            )}
 
-            <View style={styles.mediaButtons}>
-              <Pressable style={styles.mediaBtn} onPress={handlePickImage}>
-                <Text style={styles.mediaBtnText}>📷 Image</Text>
-              </Pressable>
-              <Pressable style={styles.mediaBtn} onPress={handleUnderDevelopment}>
-                <Text style={styles.mediaBtnText}>🎙️ Audio</Text>
-              </Pressable>
+              <View style={styles.modalActions}>
+                <Pressable style={[styles.btn, styles.cancelBtn]} onPress={() => { setModalVisible(false); setImageUri(null); setTitle(''); setContent(''); }}>
+                  <Text style={styles.btnTextCancel}>Cancel</Text>
+                </Pressable>
+                <Pressable style={[styles.btn, styles.saveBtn]} onPress={handleAddNote} disabled={isUploading}>
+                  <Text style={styles.btnText}>{isUploading ? 'Saving...' : 'Save'}</Text>
+                </Pressable>
+              </View>
             </View>
-
-            <View style={styles.modalActions}>
-              <Pressable style={[styles.btn, styles.cancelBtn]} onPress={() => { setModalVisible(false); setImageUri(null); setTitle(''); setContent(''); }}>
-                <Text style={styles.btnTextCancel}>Cancel</Text>
-              </Pressable>
-              <Pressable style={[styles.btn, styles.saveBtn]} onPress={handleAddNote} disabled={isUploading}>
-                <Text style={styles.btnText}>{isUploading ? 'Saving...' : 'Save'}</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
       <Modal visible={!!previewUri} animationType="fade" transparent={true}>
         <View style={styles.previewOverlay}>
@@ -477,13 +486,20 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   fabText: { color: 'black', fontSize: 32, fontWeight: 'bold', marginTop: -4 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center' },
+  modalScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+  },
   modalContent: {
     backgroundColor: '#1c1c1c',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
     padding: 24,
-    minHeight: 400
+    minHeight: 400,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   modalHeader: { color: '#fff', fontSize: 22, fontWeight: 'bold', marginBottom: 20 },
   input: {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { ActivityIndicator, Pressable, Text, View, FlatList, Modal, TextInput, Alert, StyleSheet, RefreshControl } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View, FlatList, Modal, TextInput, Alert, StyleSheet, RefreshControl, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
 import apiClient from '@/services/api';
@@ -147,29 +147,38 @@ export default function Index() {
         <Text style={styles.fabText}>+</Text>
       </Pressable>
 
-      <Modal visible={isModalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalHeader}>Create a Subject</Text>
+      <Modal visible={isModalVisible} animationType="fade" transparent={true}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <ScrollView
+            contentContainerStyle={styles.modalScrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.modalContent}>
+              <Text style={styles.modalHeader}>Create a Subject</Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Engineering Physics"
-              placeholderTextColor="#9ca3af"
-              value={name}
-              onChangeText={setName}
-            />
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. Engineering Physics"
+                placeholderTextColor="#9ca3af"
+                value={name}
+                onChangeText={setName}
+                autoFocus
+              />
 
-            <View style={styles.modalActions}>
-              <Pressable style={[styles.btn, styles.cancelBtn]} onPress={() => { setModalVisible(false); setName(''); }}>
-                <Text style={styles.btnTextCancel}>Cancel</Text>
-              </Pressable>
-              <Pressable style={[styles.btn, styles.saveBtn]} onPress={handleAddSubject}>
-                <Text style={styles.btnText}>Save</Text>
-              </Pressable>
+              <View style={styles.modalActions}>
+                <Pressable style={[styles.btn, styles.cancelBtn]} onPress={() => { setModalVisible(false); setName(''); }}>
+                  <Text style={styles.btnTextCancel}>Cancel</Text>
+                </Pressable>
+                <Pressable style={[styles.btn, styles.saveBtn]} onPress={handleAddSubject}>
+                  <Text style={styles.btnText}>Save</Text>
+                </Pressable>
+              </View>
             </View>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -220,13 +229,20 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   fabText: { color: 'black', fontSize: 32, fontWeight: 'bold', marginTop: -4 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center' },
+  modalScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+  },
   modalContent: {
     backgroundColor: '#1c1c1c',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
     padding: 24,
-    minHeight: 250
+    minHeight: 250,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   modalHeader: { color: '#fff', fontSize: 22, fontWeight: 'bold', marginBottom: 20 },
   input: {
