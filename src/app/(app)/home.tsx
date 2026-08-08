@@ -4,6 +4,7 @@ import { Redirect, router, useFocusEffect } from 'expo-router';
 import { MoreVertical, Trash2 } from 'lucide-react-native';
 import { useAuthStore } from '@/store/authStore';
 import apiClient from '@/services/api';
+import { waitForServerWakeup } from '@/services/wakeupService';
 
 type Subject = {
   id: string;
@@ -21,6 +22,7 @@ export default function Index() {
   const [isModalVisible, setModalVisible] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [name, setName] = useState('');
+  const [serverStatus, setServerStatus] = useState('');
   const [activeMenuSubjectId, setActiveMenuSubjectId] = useState<string | null>(null);
   const [deletingSubjectId, setDeletingSubjectId] = useState<string | null>(null);
 
@@ -37,14 +39,23 @@ export default function Index() {
   );
 
   const fetchSubjects = async () => {
+    if (!user?.id) return;
+
     try {
+      setServerStatus('Waking server...');
       setIsLoading(true);
-      const res = await apiClient.get(`/subjects/${user?.id}`);
+      const isAwake = await waitForServerWakeup((message) => setServerStatus(message));
+      if (!isAwake) {
+        return;
+      }
+
+      const res = await apiClient.get(`/subjects/${user.id}`);
       setSubjects(res.data);
     } catch (error) {
       console.error('Failed to fetch subjects', error);
     } finally {
       setIsLoading(false);
+      setServerStatus('');
     }
   };
 
@@ -52,12 +63,17 @@ export default function Index() {
     if (!user?.id) return;
     setIsRefreshing(true);
     try {
-      const res = await apiClient.get(`/subjects/${user?.id}`);
+      const isAwake = await waitForServerWakeup((message) => setServerStatus(message));
+      if (!isAwake) {
+        return;
+      }
+      const res = await apiClient.get(`/subjects/${user.id}`);
       setSubjects(res.data);
     } catch (error) {
       console.error('Failed to refresh subjects', error);
     } finally {
       setIsRefreshing(false);
+      setServerStatus('');
     }
   };
 
@@ -188,7 +204,10 @@ export default function Index() {
       </View>
 
       {isLoading && !isRefreshing && subjects.length === 0 ? (
-        <ActivityIndicator size="large" color="#f9cf26" style={{ marginTop: 40 }} />
+        <View style={{ alignItems: 'center', marginTop: 40 }}>
+          <ActivityIndicator size="large" color="#f9cf26" />
+          {serverStatus ? <Text style={{ color: '#fff', marginTop: 12 }}>{serverStatus}</Text> : null}
+        </View>
       ) : (
         <FlatList
           data={subjects}

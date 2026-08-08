@@ -9,15 +9,12 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useAuthStore } from '@/store/authStore';
-import { waitForServerWakeup } from '@/services/wakeupService';
 
 export default function Index() {
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.88);
   const glowOpacity = useSharedValue(0.4);
   const loadingWidth = useSharedValue(0);
-  const [showSplash, setShowSplash] = useState(true);
-  const [hasBootstrapped, setHasBootstrapped] = useState(false);
   const { user, token, isHydrated, initializeAuth } = useAuthStore();
 
   const animStyle = useAnimatedStyle(() => ({
@@ -57,7 +54,6 @@ export default function Index() {
 
       const authState = useAuthStore.getState();
       if (authState.user && authState.token) {
-        await Promise.all([delay(2200), waitForServerWakeup()]);
         if (!isMounted) return;
         router.replace('/home');
       } else {
@@ -73,24 +69,6 @@ export default function Index() {
       isMounted = false;
     };
   }, [initializeAuth]);
-
-  useEffect(() => {
-    if (isHydrated) {
-      const timer = setTimeout(() => {
-        setShowSplash(false);
-      }, 2000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isHydrated, token, user]);
-
-  if (!showSplash && (user || token)) {
-    return null;
-  }
-
-  if (!showSplash && isHydrated && !user && !token) {
-    return null;
-  }
 
   return (
     <View style={styles.container}>
