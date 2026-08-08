@@ -47,6 +47,7 @@ export default function AppLayout() {
             />
             {/* Hiding the other routes */}
             <Tabs.Screen name="subject/[id]" options={{ href: null }} />
+            <Tabs.Screen name="about" options={{ href: null }} />
         </Tabs>
     );
 }

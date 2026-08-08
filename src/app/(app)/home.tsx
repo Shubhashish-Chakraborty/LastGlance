@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { ActivityIndicator, GestureResponderEvent, Pressable, Text, View, FlatList, Modal, TextInput, Alert, StyleSheet, RefreshControl, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Redirect, router, useFocusEffect } from 'expo-router';
-import { MoreVertical, Trash2 } from 'lucide-react-native';
+import { MoreVertical, Trash2, CircleQuestionMark } from 'lucide-react-native';
 import { useAuthStore } from '@/store/authStore';
 import apiClient from '@/services/api';
 import { waitForServerWakeup } from '@/services/wakeupService';
@@ -194,13 +194,9 @@ export default function Index() {
           <Text style={styles.welcomeText}>Wassup {user.username} ;)</Text>
           <Text style={styles.subtitle}>Your Subjects</Text>
         </View>
-        {/* <Pressable style={{
-
-        }}>
-          <Text style={{
-            color: 'white',
-          }}>?</Text>
-        </Pressable> */}
+        <Pressable style={{}} onPress={() => router.push("/about")}>
+          <CircleQuestionMark size={32} color="#f9cf26" />
+        </Pressable>
       </View>
 
       {isLoading && !isRefreshing && subjects.length === 0 ? (

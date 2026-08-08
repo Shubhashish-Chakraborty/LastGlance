@@ -198,7 +198,7 @@ export default function ProfileScreen() {
             {renderSettingItem({
               icon: MessageSquare,
               label: 'Help & Feedback',
-              onPress: () => Linking.openURL('https://docs.google.com/forms/d/e/1FAIpQLSfIlxw4ZESHTB0wT8f3dNsB62dxGJF7VpEw83tIpqrT-9PyvA/viewform'),
+              onPress: () => Linking.openURL('https://docs.google.com/forms/d/e/1FAIpQLSdPVMD1nbj50J_E0agyqafyTN1h9s9c9E6Op7iQJXlXUkNK6Q/viewform'),
             })}
           </View>
         </View>
